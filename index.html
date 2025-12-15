@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>岛屿青年戏剧节 - 专属行程单</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        /* ====================
+           1. 全局与基础设置
+           ==================== */
+        :root {
+            --bg-dark: #050505;
+            --purple: #7065c1;
+            --red: #e31d1a;
+            --white: #ffffff;
+            --grey: #888888;
+            --retro-bg: #f2e6d6;
+            --retro-ink: #2b1d1a;
+            --retro-red: #a83020;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            margin: 0; padding: 20px 20px 100px 20px; 
+            background-color: var(--bg-dark); 
+            color: var(--white);
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* 背景氛围装饰 */
+        .bg-deco { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; overflow: hidden; }
+        .bg-tri { 
+            position: absolute; top: 5%; right: -50px; 
+            border-left: 120px solid transparent; border-right: 120px solid transparent; border-bottom: 240px solid var(--red);
+            opacity: 0.15; transform: rotate(25deg); filter: blur(20px);
+        }
+        .bg-circle {
+            position: absolute; bottom: 15%; left: -60px; width: 200px; height: 200px;
+            border: 2px solid var(--purple); border-radius: 50%; opacity: 0.1;
+        }
+
+        /* ====================
+           2. 勾选列表 UI
+           ==================== */
+        header { margin-bottom: 30px; }
+        h1 { font-size: 26px; font-weight: 900; letter-spacing: 1px; margin: 0 0 8px 0; }
+        .subtitle { color: #999; font-size: 13px; line-height: 1.5; }
+
+        .date-divider {
+            display: flex; align-items: center; color: var(--purple); 
+            font-weight: 800; font-size: 20px; margin: 35px 0 15px 0;
+        }
+        .date-divider::after {
+            content: ''; flex: 1; height: 1px; background: #333; margin-left: 15px;
+        }
+
+        /* 卡片样式 */
+        .event-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            display: flex; align-items: center;
+            transition: 0.2s;
+            cursor: pointer;
+        }
+        
+        .event-card.active {
+            background: #252230;
+            border-color: var(--purple);
+            box-shadow: 0 4px 12px rgba(112, 101, 193, 0.2);
+        }
+
+        .chk-icon {
+            width: 22px; height: 22px; border: 2px solid #555; border-radius: 4px;
+            margin-right: 15px; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; background: #000;
+        }
+        .event-card.active .chk-icon { background: var(--purple); border-color: var(--purple); }
+        .event-card.active .chk-icon::after { content: '✓'; font-weight: bold; font-size: 14px; }
+
+        .card-content { flex: 1; }
+        .card-row-1 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .card-time { 
+            font-family: 'Courier New', monospace; font-weight: bold; font-size: 15px; /* 稍微调小一点防止时间太长换行 */
+            color: var(--purple); 
+        }
+        .card-loc { font-size: 12px; color: #888; background: #111; padding: 2px 6px; border-radius: 4px; }
+        .card-name { font-size: 15px; color: #eee; font-weight: 500; line-height: 1.4; }
+        
+        .event-card.active .card-name { color: #fff; font-weight: 600; }
+        .event-card.active .card-loc { color: var(--purple); background: rgba(0,0,0,0.2); }
+
+        /* ====================
+           3. 底部操作栏
+           ==================== */
+        .bottom-actions {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: rgba(10,10,10,0.95); backdrop-filter: blur(10px);
+            padding: 15px 20px 30px 20px; border-top: 1px solid #333;
+            display: flex; gap: 15px; z-index: 100;
+        }
+        .btn {
+            flex: 1; height: 50px; border: none; border-radius: 8px;
+            font-size: 14px; font-weight: bold; color: #fff; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .btn-geo { background: #222; border: 1px solid #444; }
+        .btn-retro { background: var(--retro-red); box-shadow: 0 4px 10px rgba(168, 48, 32, 0.4); }
+        .btn span { font-size: 10px; opacity: 0.8; font-weight: normal; margin-top: 2px; }
+
+        /* ====================
+           4. 海报生成区域 (隐藏)
+           ==================== */
+        .poster-container {
+            position: fixed; left: -9999px; top: 0;
+            width: 375px; /* 强制手机宽度 */
+            z-index: -5;
+        }
+
+        /* --- 风格A: 几何 --- */
+        #poster-geo {
+            width: 375px; min-height: 667px; background: #050505; color: #fff;
+            padding: 0; overflow: hidden; position: relative; border: 1px solid #222;
+        }
+        .g-header { padding: 40px 30px 20px 30px; position: relative; z-index: 2; }
+        .g-title { font-size: 38px; font-weight: 900; line-height: 0.9; margin-bottom: 10px; font-family: sans-serif; }
+        .g-sub { font-size: 12px; letter-spacing: 4px; color: var(--purple); font-weight: bold; }
+        
+        /* 装饰元素 */
+        .gs-tri { 
+            position: absolute; top: 20px; right: 20px; width: 0; height: 0;
+            border-left: 50px solid transparent; border-right: 50px solid transparent; border-bottom: 100px solid #333;
+            transform: rotate(15deg);
+        }
+        .gs-circle-purp {
+            position: absolute; top: 100px; right: -20px; width: 80px; height: 80px; 
+            border: 10px solid var(--purple); border-radius: 50%; opacity: 0.8;
+        }
+        .gs-circle-red {
+            position: absolute; bottom: 100px; right: -30px; width: 120px; height: 120px;
+            border: 15px solid var(--red); border-radius: 50%; opacity: 0.6; z-index: 0;
+        }
+
+        .g-list { padding: 0 30px 60px 30px; position: relative; z-index: 1; }
+        .g-day-row { margin-top: 25px; }
+        .g-day-title { 
+            font-size: 20px; font-weight: 800; color: #fff; background: #000; 
+            display: inline-block; padding-right: 15px; border-bottom: 2px solid var(--purple); margin-bottom: 10px;
+        }
+        .g-item { 
+            display: flex; align-items: baseline; margin-bottom: 8px; 
+            border-left: 1px solid #333; padding-left: 10px; margin-left: 5px;
+        }
+        .g-time { width: 90px; flex-shrink: 0; color: #888; font-family: monospace; font-weight: bold; font-size: 14px; }
+        .g-info { flex: 1; }
+        .g-name { font-size: 14px; font-weight: 500; line-height: 1.3; }
+        /* 【修复】几何风地点文字颜色：变浅 */
+        .g-loc { font-size: 10px; color: #aaa; margin-top: 3px; display: block; }
+
+        /* --- 风格B: 复古 --- */
+        #poster-retro {
+            width: 375px; min-height: 667px;
+            background-color: var(--retro-bg);
+            color: var(--retro-ink);
+            padding: 20px;
+            font-family: "Songti SC", "SimSun", serif; /* 宋体 */
+            position: relative;
+            background-image: linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .r-frame {
+            border: 4px double var(--retro-ink);
+            height: 100%;
+            padding: 15px;
+            position: relative;
+            background: rgba(255,255,255,0.4);
+        }
+        .r-corner {
+            position: absolute; width: 20px; height: 20px; border: 2px solid var(--retro-ink);
+        }
+        .rc-tl { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+        .rc-tr { top: 5px; right: 5px; border-left: none; border-bottom: none; }
+        .rc-bl { bottom: 5px; left: 5px; border-right: none; border-top: none; }
+        .rc-br { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+
+        .r-header { text-align: center; border-bottom: 2px solid var(--retro-ink); padding-bottom: 15px; margin-bottom: 20px; }
+        /* 【修复】复古风标题：字号缩小以容纳更长标题 */
+        .r-title { font-size: 24px; font-weight: bold; letter-spacing: 2px; color: var(--retro-red); margin-bottom: 5px; text-shadow: 1px 1px 0 rgba(0,0,0,0.1); }
+        .r-sub { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; font-family: sans-serif; color: #555; }
+
+        /* 【修复】复古印章：位置微调，防止遮挡文字 */
+        .r-stamp {
+            position: absolute; top: 15px; right: 15px;
+            width: 80px; height: 80px; border: 3px solid var(--retro-red); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; flex-direction: column;
+            color: var(--retro-red); transform: rotate(-15deg); opacity: 0.7; /* 增加透明度 */
+            z-index: 10; 
+            /* 去掉背景色，做成透叠效果更像印章 */
+            background: transparent;
+            box-shadow: inset 0 0 0 2px rgba(168, 48, 32, 0.1); 
+        }
+        .r-stamp span { font-weight: bold; font-size: 14px; line-height: 1.2; }
+        
+        .r-list { padding: 0 5px; }
+        .r-day-block { margin-bottom: 20px; }
+        .r-day-head { 
+            background: var(--retro-ink); color: var(--retro-bg); 
+            display: inline-block; padding: 2px 10px; font-weight: bold; margin-bottom: 8px;
+            font-family: sans-serif; font-size: 14px;
+        }
+        
+        .r-item { 
+            display: flex; border-bottom: 1px dashed #aaa; padding: 6px 0; align-items: flex-end; 
+        }
+        .r-time { 
+            font-family: "Courier New", monospace; font-weight: bold; font-size: 15px; 
+            color: var(--retro-red); width: 95px; flex-shrink: 0;
+        }
+        .r-content { flex: 1; }
+        .r-name { font-size: 15px; font-weight: bold; color: #111; line-height: 1.3; }
+        .r-loc { font-size: 11px; color: #666; font-style: italic; }
+
+        .r-footer {
+            margin-top: 30px; text-align: center; font-size: 10px; color: #666;
+            border-top: 1px solid #ccc; padding-top: 10px; font-family: sans-serif;
+        }
+
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 200; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .modal img { max-width: 90%; max-height: 80vh; border: 1px solid #333; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        .modal-close { position: absolute; top: 20px; right: 20px; color: #fff; font-size: 30px; cursor: pointer; }
+        .modal-tip { color: #fff; margin-top: 15px; font-size: 14px; }
+
+    </style>
+</head>
+<body>
+
+<div class="bg-deco">
+    <div class="bg-tri"></div>
+    <div class="bg-circle"></div>
+</div>
+
+<div class="container">
+    <header>
+        <h1>ISLAND THEATRE</h1>
+        <div class="subtitle">2025 岛屿青年戏剧节 · 行程图生成小助手</div>
+    </header>
+
+    <div id="selection-list"></div>
+</div>
+
+<div class="bottom-actions">
+    <button class="btn btn-geo" onclick="generatePoster('geo')">
+        几何风格
+        <span>Geometric</span>
+    </button>
+    <button class="btn btn-retro" onclick="generatePoster('retro')">
+        复古戏票
+        <span>Vintage</span>
+    </button>
+</div>
+
+<div class="poster-container">
+    
+    <div id="poster-geo">
+        <div class="gs-tri"></div>
+        <div class="gs-circle-purp"></div>
+        <div class="gs-circle-red"></div>
+        <div class="g-header">
+            <div class="g-title">MY<br>ISLAND<br>JOURNEY</div>
+            <div class="g-sub">YOUTH THEATRE FESTIVAL 2025</div>
+        </div>
+        <div class="g-list" id="geo-content"></div>
+    </div>
+
+    <div id="poster-retro">
+        <div class="r-frame">
+            <div class="r-corner rc-tl"></div><div class="r-corner rc-tr"></div>
+            <div class="r-corner rc-bl"></div><div class="r-corner rc-br"></div>
+            
+            <div class="r-stamp">
+                <span>鼓浪屿<br>壹号</span>
+            </div>
+
+            <div class="r-header">
+                <div class="r-title">島嶼青年戲劇節行程單</div>
+                <div class="r-sub">Island Youth Theatre Festival</div>
+            </div>
+
+            <div class="r-list" id="retro-content"></div>
+
+            <div class="r-footer">
+                <div>KULANGSU ART PARK · XIAMEN</div>
+                <div style="transform: scale(0.8); margin-top:5px;">NO. 2025-12-2430</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="modal" id="resultModal">
+    <div class="modal-close" onclick="document.getElementById('resultModal').style.display='none'">×</div>
+    <img id="final-image" />
+    <p class="modal-tip">长按图片保存到相册</p>
+</div>
+
+<script>
+    // 1. 全量数据录入
+    const scheduleData = [
+        {
+            date: "12月24日",
+            events: [
+                { time: "15:00", dur: 60, loc: "鹭潮厅", name: "学院观察：基于两岸视角的校园戏剧" },
+                { time: "16:00", dur: 45, loc: "鹭潮厅", name: "创投计划、鳗鲡计划入选作品介绍" },
+                { time: "17:00", dur: 60, loc: "鹭潮厅", name: "今年戏剧市场变好了吗？" },
+                { time: "19:00", dur: 100, loc: "先锋剧场", name: "第二性" },
+                { time: "20:00", dur: 30, loc: "鼓浪屿美院园区户外", name: "追梦马车：圣诞戏剧之夜大巡游" },
+                { time: "21:00", dur: 60, loc: "KCCA·石庭", name: "《淡水》剧本围读" }
+            ]
+        },
+        {
+            date: "12月25日",
+            events: [
+                { time: "10:00", dur: 180, loc: "KCCA主展厅副厅", name: "戏剧疗愈·梦境工作坊" },
+                { time: "12:00", dur: 70, loc: "鹭潮厅·天台", name: "做一个吃饭版剧的青年戏剧人·青年戏剧对谈" },
+                { time: "14:30", dur: 90, loc: "KCCA主展厅", name: "像自然一样生长·肢体工作坊" },
+                { time: "15:30", dur: 100, loc: "先锋剧场", name: "第二性" },
+                { time: "15:00", dur: 60, loc: "鹭潮厅·天台", name: "瓦日迪·穆瓦德《海鸥》南大出版社文本分享" },
+                { time: "17:00", dur: 60, loc: "岛岸书店", name: "荒漠里开出独立的花：独立剧团对谈" },
+                { time: "19:30", dur: 60, loc: "先锋剧场", name: "那天鼠姑哭得很伤心" },
+                { time: "19:30", dur: 90, loc: "KCCA主展厅", name: "礼物：即兴互动工作坊" },
+                { time: "20:00", dur: 60, loc: "岛岸书店", name: "《我的艺术生活》：上海译文斯坦尼传记文本分享" },
+                { time: "21:00", dur: 60, loc: "KCCA·石庭", name: "《海鸥》剧本围读" },
+                { time: "21:30", dur: 60, loc: "牡蛎戏剧市集", name: "鳗鲡计划开放剧本围读" }
+            ]
+        },
+        {
+            date: "12月26日",
+            events: [
+                { time: "10:00", dur: 45, loc: "学术厅2楼", name: "布袋木偶戏操偶工作坊" },
+                { time: "11:00", dur: 60, loc: "先锋剧场", name: "那天鼠姑哭得很伤心" },
+                { time: "13:00", dur: 60, loc: "KCCA主展厅", name: "附子" },
+                { time: "13:00", dur: 60, loc: "先锋剧场", name: "剧盒PlayBOX 素描喜剧" },
+                { time: "14:00", dur: 60, loc: "海边天台", name: "对话田纳西·威廉斯：上海译文出版社&南大出版社" },
+                { time: "15:30", dur: 60, loc: "鹭潮厅", name: "《第二性》主创分享：关于女性的戏剧创作谈" },
+                { time: "16:00", dur: 60, loc: "KCCA主展厅", name: "戏剧表演工作坊" },
+                { time: "16:30", dur: 60, loc: "岛岸书店", name: "文本与情感：鼠姑主创分享" },
+                { time: "16:30", dur: 90, loc: "先锋剧场", name: "我们的赵孤" },
+                { time: "17:30", dur: 60, loc: "KCCA·石庭", name: "我是风：剧本围读式演出" },
+                { time: "19:30", dur: 60, loc: "鹭潮厅", name: "视角与世界：女性创作者对谈" },
+                { time: "20:30", dur: 75, loc: "先锋剧场", name: "竹林院" },
+                { time: "21:00", dur: 60, loc: "KCCA·石庭", name: "《服妖之鉴》剧本围读" },
+                { time: "21:30", dur: 60, loc: "牡蛎戏剧市集", name: "鳗鲡计划开放剧本围读" }
+            ]
+        },
+        {
+            date: "12月27日",
+            events: [
+                { time: "09:30", dur: 60, loc: "先锋剧场", name: "神奇飞书绘本剧" },
+                { time: "10:00", dur: 60, loc: "学术厅2楼", name: "翻译的文本练习" },
+                { time: "10:30", dur: 360, loc: "KCCA主展厅副厅", name: "即兴心法课" },
+                { time: "11:00", dur: 30, loc: "先锋剧场·Live舞台", name: "折子戏：歌仔与高甲" },
+                { time: "11:30", dur: 45, loc: "先锋剧场·Live舞台", name: "布袋木偶戏" },
+                { time: "13:00", dur: 75, loc: "先锋剧场", name: "竹林院" },
+                { time: "13:30", dur: 110, loc: "KCCA主展厅", name: "不会讲故事的多比" },
+                { time: "14:00", dur: 60, loc: "学术厅2楼", name: "央华戏剧的专业理念" },
+                { time: "14:30", dur: 15, loc: "海边天台", name: "壳Shell肢体剧" },
+                { time: "15:15", dur: 15, loc: "牡蛎戏剧市集", name: "来疯喜剧快闪" },
+                { time: "15:00", dur: 60, loc: "鹭潮厅", name: "托尔斯泰戏剧集" },
+                { time: "15:30", dur: 60, loc: "学术厅2楼", name: "芥川的中国谈" },
+                { time: "15:45", dur: 15, loc: "牡蛎戏剧市集", name: "来疯喜剧快闪" },
+                { time: "16:00", dur: 60, loc: "先锋剧场", name: "那天鼠姑哭得很伤心" },
+                { time: "16:30", dur: 60, loc: "岛岸书店", name: "后现代演出剧场：对话剧场" },
+                { time: "17:30", dur: 60, loc: "KCCA主展厅", name: "铃木表演法" },
+                { time: "19:00", dur: 60, loc: "学术厅2楼", name: "一位戏剧观察者看到的时代戏剧新生命" },
+                { time: "19:00", dur: 60, loc: "鹭潮厅", name: "赵孤，文学剧场漫谈" },
+                { time: "19:00", dur: 150, loc: "先锋剧场", name: "万晓利LIVE" },
+                { time: "20:30", dur: 60, loc: "KCCA主展厅", name: "英文即兴戏剧工坊" },
+                { time: "21:00", dur: 60, loc: "KCCA·石庭", name: "《卡里古拉》剧本围读" },
+                { time: "21:30", dur: 60, loc: "牡蛎戏剧市集", name: "鳗鲡计划开放剧本围读" },
+                { time: "22:00", dur: 90, loc: "先锋剧场", name: "三姐妹" }
+            ]
+        },
+        {
+            date: "12月28日",
+            events: [
+                { time: "09:30", dur: 60, loc: "先锋剧场", name: "丁丁小导绘本剧" },
+                { time: "10:00", dur: 60, loc: "学术厅2楼", name: "音乐剧工作坊" },
+                { time: "10:30", dur: 360, loc: "KCCA主展厅副厅", name: "即兴心法课" },
+                { time: "11:00", dur: 90, loc: "先锋剧场", name: "三姐妹" },
+                { time: "13:00", dur: 75, loc: "KCCA主展厅副厅", name: "梦境奇遇肢体剧" },
+                { time: "13:30", dur: 45, loc: "牡蛎戏剧市集", name: "布袋木偶戏" },
+                { time: "14:00", dur: 30, loc: "先锋剧场", name: "附子" },
+                { time: "14:30", dur: 90, loc: "鹭潮厅", name: "音乐剧《宝玉》练习声" },
+                { time: "15:30", dur: 60, loc: "岛岸书店", name: "契诃夫的一生：上海译文出版社文本分享" },
+                { time: "16:00", dur: 80, loc: "先锋剧场", name: "与山巨源书" },
+                { time: "16:00", dur: 60, loc: "鹭潮厅·天台", name: "文本与现实主义：对话编剧" },
+                { time: "16:30", dur: 60, loc: "鹭潮厅", name: "青年与传统" },
+                { time: "17:00", dur: 60, loc: "KCCA·石庭", name: "民营剧团实录" },
+                { time: "19:30", dur: 90, loc: "先锋剧场", name: "闽南学院观察：时间的重量四联剧" },
+                { time: "20:00", dur: 60, loc: "KCCA·石庭", name: "《我弥留之际》剧本围读" },
+                { time: "21:00", dur: 60, loc: "KCCA·石庭", name: "《铁皮屋顶上的猫》剧本围读" },
+                { time: "21:30", dur: 60, loc: "牡蛎戏剧市集", name: "鳗鲡计划开放剧本围读" }
+            ]
+        },
+        {
+            date: "12月29日",
+            events: [
+                { time: "10:00", dur: 60, loc: "鹭潮厅", name: "创投展演 A, B组" },
+                { time: "11:00", dur: 110, loc: "先锋剧场", name: "不会讲故事的多比" },
+                { time: "12:00", dur: 60, loc: "鹭潮厅", name: "创投展演 C, D组" },
+                { time: "14:00", dur: 60, loc: "鹭潮厅", name: "创投展演 E, F组" },
+                { time: "15:30", dur: 75, loc: "先锋剧场", name: "首阳山的最后一日" },
+                { time: "16:00", dur: 60, loc: "鹭潮厅", name: "创投展演 G, H组" },
+                { time: "19:30", dur: 80, loc: "先锋剧场", name: "与山巨源书" },
+                { time: "21:00", dur: 60, loc: "KCCA·石庭", name: "《生之代价》剧本围读" },
+                { time: "21:30", dur: 60, loc: "牡蛎戏剧市集", name: "鳗鲡计划开放剧本围读" }
+            ]
+        },
+        {
+            date: "12月30日",
+            events: [
+                { time: "10:00", dur: 30, loc: "鹭潮厅", name: "创投对谈" },
+                { time: "11:00", dur: 30, loc: "鹭潮厅", name: "创投对谈" },
+                { time: "12:00", dur: 30, loc: "鹭潮厅", name: "创投对谈" },
+                { time: "13:00", dur: 30, loc: "鹭潮厅", name: "创投对谈" },
+                { time: "14:00", dur: 30, loc: "鹭潮厅", name: "创投对谈" },
+                { time: "15:30", dur: 75, loc: "先锋剧场", name: "首阳山的最后一日" },
+                { time: "16:00", dur: 30, loc: "鹭潮厅", name: "创投对谈" },
+                { time: "19:30", dur: 75, loc: "先锋剧场", name: "创投计划颁奖" }
+            ]
+        }
+    ];
+
+    // 计算结束时间 (HH:mm - HH:mm)
+    function getRange(start, min) {
+        let [h, m] = start.split(':').map(Number);
+        let d = new Date(); d.setHours(h, m, 0);
+        
+        let startStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        
+        d.setMinutes(d.getMinutes() + min);
+        let endStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        
+        return `${startStr}-${endStr}`;
+    }
+
+    // 2. 渲染勾选列表
+    const listDiv = document.getElementById('selection-list');
+    scheduleData.forEach(day => {
+        let dayDiv = document.createElement('div');
+        dayDiv.innerHTML = `<div class="date-divider">${day.date}</div>`;
+        
+        day.events.forEach(evt => {
+            let card = document.createElement('div');
+            card.className = 'event-card';
+            
+            // 数据属性
+            let range = getRange(evt.time, evt.dur);
+            card.dataset.json = JSON.stringify({
+                day: day.date,
+                range: range,
+                name: evt.name,
+                loc: evt.loc,
+                sortTime: evt.time
+            });
+
+            card.onclick = function() {
+                this.classList.toggle('active');
+            };
+
+            // 【修复】勾选列表中显示时间段，而不仅仅是开始时间
+            card.innerHTML = `
+                <div class="chk-icon"></div>
+                <div class="card-content">
+                    <div class="card-row-1">
+                        <span class="card-time">${range}</span>
+                        <span class="card-loc">📍${evt.loc}</span>
+                    </div>
+                    <div class="card-name">${evt.name}</div>
+                </div>
+            `;
+            dayDiv.appendChild(card);
+        });
+        listDiv.appendChild(dayDiv);
+    });
+
+    // 3. 生成逻辑
+    function generatePoster(style) {
+        const actives = document.querySelectorAll('.event-card.active');
+        if(actives.length === 0) return alert('请先选择至少一个活动！');
+
+        // 数据归类
+        let data = {};
+        actives.forEach(el => {
+            let item = JSON.parse(el.dataset.json);
+            if(!data[item.day]) data[item.day] = [];
+            data[item.day].push(item);
+        });
+
+        // 渲染海报DOM
+        if(style === 'geo') renderGeo(data);
+        else renderRetro(data);
+
+        // 截图
+        const targetId = style === 'geo' ? 'poster-geo' : 'poster-retro';
+        const element = document.getElementById(targetId);
+        
+        // 关键修复：html2canvas 参数设置，防止右侧切边
+        html2canvas(element, {
+            scale: 2, // 高清
+            useCORS: true,
+            width: 375, // 强制宽度
+            windowWidth: 375, // 模拟窗口宽度
+            onclone: (clonedDoc) => {
+                // 确保克隆出来的元素是可见的
+                const clonedEl = clonedDoc.getElementById(targetId);
+                clonedEl.style.display = 'block';
+            }
+        }).then(canvas => {
+            const img = document.getElementById('final-image');
+            img.src = canvas.toDataURL('image/png');
+            document.getElementById('resultModal').style.display = 'flex';
+        });
+    }
+
+    function renderGeo(data) {
+        const con = document.getElementById('geo-content');
+        con.innerHTML = '';
+        for(let d in data) {
+            data[d].sort((a,b) => a.sortTime.localeCompare(b.sortTime));
+            let html = `<div class="g-day-row"><div class="g-day-title">${d}</div>`;
+            data[d].forEach(ev => {
+                html += `
+                    <div class="g-item">
+                        <div class="g-time">${ev.range}</div>
+                        <div class="g-info">
+                            <div class="g-name">${ev.name}</div>
+                            <span class="g-loc">@${ev.loc}</span>
+                        </div>
+                    </div>`;
+            });
+            html += `</div>`;
+            con.innerHTML += html;
+        }
+    }
+
+    function renderRetro(data) {
+        const con = document.getElementById('retro-content');
+        con.innerHTML = '';
+        for(let d in data) {
+            data[d].sort((a,b) => a.sortTime.localeCompare(b.sortTime));
+            let html = `<div class="r-day-block"><div class="r-day-head">${d}</div>`;
+            data[d].forEach(ev => {
+                html += `
+                    <div class="r-item">
+                        <div class="r-time">${ev.range}</div>
+                        <div class="r-content">
+                            <div class="r-name">${ev.name}</div>
+                            <div class="r-loc">${ev.loc}</div>
+                        </div>
+                    </div>`;
+            });
+            html += `</div>`;
+            con.innerHTML += html;
+        }
+    }
+</script>
+</body>
+</html>
