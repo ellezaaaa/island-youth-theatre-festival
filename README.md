@@ -3,6 +3,8 @@
 
 A mobile-first web application that allows attendees of the Island Youth Theatre Festival (Kulangsu, Xiamen) to curate their own itinerary and generate shareable, aesthetic schedule posters.
 
+Direct usage link: https://ellezaaaa.github.io/island-youth-theatre-festival/
+
 ## ✨ Features
 
 * **Interactive Schedule:** Browse the full festival lineup (Dec 24 - Dec 30) with accurate times and durations.
