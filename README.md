@@ -32,7 +32,7 @@ Direct usage link: https://ellezaaaa.github.io/island-youth-theatre-festival/
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/yourusername/island-theatre-schedule.git](https://github.com/yourusername/island-theatre-schedule.git)
+    git clone [https://github.com/ellezaaaa/island-theatre-schedule.git](https://github.com/ellezaaaa/island-theatre-schedule.git)
     ```
 2.  **Open the file:**
     Simply open `index.html` in any modern web browser (Chrome, Safari, Edge).
